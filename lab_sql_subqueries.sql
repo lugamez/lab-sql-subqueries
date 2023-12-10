@@ -1,0 +1,119 @@
+/* Lab - SQL Subqueries */
+
+USE SAKILA;
+
+/* 1. Determine the number of copies of the film "Hunchback Impossible" that exist in the inventory system. */
+
+SELECT COUNT(*) AS "NUMBER OF COPIES IN THE INVENTORY" FROM SAKILA.INVENTORY AS I
+LEFT JOIN SAKILA.FILM AS F ON I.FILM_ID = F.FILM_ID
+WHERE F.TITLE = 'HUNCHBACK IMPOSSIBLE';
+
+/* 2. List all films whose length is longer than the average length of all the films in the Sakila 
+database. */
+
+SELECT FILM.TITLE FROM SAKILA.FILM
+WHERE LENGTH > 
+(SELECT AVG(LENGTH) FROM SAKILA.FILM);
+
+/* 3. Use a subquery to display all actors who appear in the film "Alone Trip". */
+
+-- FILM_ACTOR: ACTOR_ID AND FILM_ID
+-- FILM: TITLE, FILM_ID
+-- ACTOR: ACTOR_ID, FIRST_NAME, LAST_NAME
+
+-- DID IT WITH JOINS IN THE BEGINNING BUT I MANAGED TO DO IT WITH SUBQUERIES IN THE END :)
+
+SELECT A.FIRST_NAME, A.LAST_NAME FROM SAKILA.FILM AS F
+LEFT JOIN FILM_ACTOR AS FA ON F.FILM_ID = FA.FILM_ID
+LEFT JOIN ACTOR AS A ON FA.ACTOR_ID = A.ACTOR_ID
+WHERE F.TITLE='ALONE TRIP';
+
+SELECT FIRST_NAME, LAST_NAME FROM SAKILA.ACTOR
+WHERE ACTOR_ID IN
+(SELECT ACTOR_ID FROM FILM_ACTOR
+WHERE FILM_ID = (SELECT FILM_ID FROM SAKILA.FILM
+WHERE TITLE='ALONE TRIP'));
+
+/* 4. Sales have been lagging among young families, and you want to target family movies for a 
+promotion. Identify all movies categorized as family films. */
+
+-- FILM: FILM_ID, TITLE
+-- FILM_CATEGORY: FILM_ID, CATEGORY_ID
+-- CATEGORY: CATEGORY_ID, NAME
+
+SELECT TITLE FROM FILM
+WHERE FILM_ID IN (SELECT FILM_ID FROM FILM_CATEGORY
+WHERE CATEGORY_ID = (SELECT CATEGORY_ID FROM SAKILA.CATEGORY
+WHERE NAME = 'Family'));
+
+/* 5. Retrieve the name and email of customers from Canada using both subqueries and joins. To use joins, you will need to identify the relevant
+ tables and their primary and foreign keys. */
+ 
+ -- CUSTOMER: FIRST_NAME, LAST_NAME, EMAIL, CUSTOMER_ID, ADDRESS_ID
+ -- ADDRESS: ADDRESS_ID, CITY_ID
+ -- CITY: CITY_ID, COUNTRY_ID
+ -- COUNTRY: COUNTRY_ID, COUNTRY
+ 
+ SELECT FIRST_NAME, LAST_NAME, EMAIL FROM CUSTOMER AS C
+ LEFT JOIN ADDRESS AS A ON C.ADDRESS_ID = A.ADDRESS_ID
+ WHERE A.ADDRESS_ID IN (SELECT ADDRESS_ID FROM ADDRESS
+ WHERE CITY_ID IN (SELECT CITY_ID FROM CITY
+ WHERE COUNTRY_ID = (SELECT COUNTRY_ID FROM SAKILA.COUNTRY
+ WHERE COUNTRY = 'Canada')));
+ 
+ -- I DID A LEFT JOIN BECAUSE, WITH A RIGHT JOIN, I GET TWO NULL VALUES IN THE CUSTOMER TABLE. 
+ -- I BELIEVE THOSE WERE CUSTOMERS IN THE PAST BUT THEY ARE NOT ANYMORE.
+ 
+ /* 6. Determine which films were starred by the most prolific actor in the Sakila database. A prolific 
+ actor is defined as the actor who has acted in the most number of films. First, you will need to find 
+ the most prolific actor and then use that actor_id to find the different films that he or she starred 
+ in. */
+ 
+-- FILM_ACTOR: ACTOR_ID AND FILM_ID
+-- FILM: TITLE, FILM_ID
+-- ACTOR: ACTOR_ID, FIRST_NAME, LAST_NAME
+
+SELECT FIRST_NAME, LAST_NAME FROM SAKILA.ACTOR
+WHERE ACTOR_ID = (SELECT ACTOR_ID FROM FILM_ACTOR
+WHERE FILM_ID IN (SELECT FILM_ID FROM SAKILA.FILM)
+GROUP BY ACTOR_ID
+ORDER BY COUNT(*) DESC
+LIMIT 1);
+
+/* Find the films rented by the most profitable customer in the Sakila database. 
+You can use the customer and payment tables to find the most profitable customer, i.e., the
+customer who has made the largest sum of payments. */
+
+-- PAYMENT: RENTAL_ID
+-- RENTAL: RENTAL_ID, INVENTORY_ID
+-- INVENTORY: INVENTORY_ID, FILM_ID
+-- FILM: FILM_ID, TITLE
+
+SELECT TITLE FROM SAKILA.FILM
+WHERE FILM_ID IN (SELECT FILM_ID FROM SAKILA.INVENTORY
+WHERE INVENTORY_ID IN (SELECT INVENTORY_ID FROM SAKILA.RENTAL
+WHERE CUSTOMER_ID = (SELECT CUSTOMER_ID FROM SAKILA.PAYMENT
+GROUP BY CUSTOMER_ID
+ORDER BY SUM(AMOUNT) DESC
+LIMIT 1)))
+ORDER BY TITLE ASC;
+
+/* 8. Retrieve the client_id and the total_amount_spent of those clients who spent more than the
+average of the total_amount spent by each client. You can use subqueries to accomplish this. */
+
+SELECT ROUND(AVG(AMOUNT),2) AS "AMOUNT" FROM (SELECT SUM(AMOUNT) AS "AMOUNT" FROM SAKILA.PAYMENT
+GROUP BY CUSTOMER_ID) P; -- AVERAGE OF THE TOTAL AMOUNT SPENT BY EACH CLIENT (112.53)
+
+SELECT CUSTOMER_ID, SUM(AMOUNT) FROM SAKILA.PAYMENT
+GROUP BY CUSTOMER_ID; -- TOTAL AMOUNT SPENT BY EACH CLIENT
+
+SELECT CUSTOMER_ID, SUM(AMOUNT) FROM SAKILA.PAYMENT
+WHERE SUM(AMOUNT) > (SELECT ROUND(AVG(AMOUNT),2) AS "AMOUNT" FROM (SELECT SUM(AMOUNT) AS "AMOUNT" FROM SAKILA.PAYMENT
+GROUP BY CUSTOMER_ID) P)
+GROUP BY CUSTOMER_ID; 
+
+-- WOULD LIKE THIS TO BRING THE CUSTOMERS WITH AMOUNTS BIGGER THAN 112.53. UNFORTUNATELY, IT'S NOT
+-- WORKING AND I DON'T KNOW HOW TO SOLVE IT
+
+
+ 
